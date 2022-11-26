@@ -11,20 +11,21 @@ workspace "CourseWork"
 
 	root      = "%{wks.location}/"
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}"
+	bindir    = "bin/" .. outputdir
 
 	local srcdir   = root .. "source"
 	local incdir   = root .. "include"
 	local depsdir  = root .. "dependencies"
 
-	local builddir = "%{wks.location}\\build\\" .. outputdir
+	local builddir = "%{wks.location}/build/" .. outputdir
 
 
-	-- Virtual folder to contain several projects
+	-- Virtual dir to contain several projects
 	group "DEPENDENCIES"
 		include "dependencies/glfw.lua"
 		include "dependencies/glad.lua"
 		include "dependencies/imgui.lua"
-		-- 'glm' does not require compilation, it's header only
+		-- 'glm'      does not require compilation, it's header only
 		-- 'freetype' does not require compilation, it has a compiled lib & is used only inside imgui
 	group ""
 
@@ -36,8 +37,8 @@ workspace "CourseWork"
 
 
 	project "CourseWork"
-		targetname "CourseWork App"  -- Name of executable
-		kind "ConsoleApp"		 -- Kind of binary object being created by project (https://premake.github.io/docs/kind/)
+		targetname "CourseWork App"  -- Executable name
+		kind "ConsoleApp"  -- Kind of binary object created by the project (https://premake.github.io/docs/kind/)
 		language "C++"
 		cppdialect "C++latest"
 		staticruntime "off"	
@@ -49,8 +50,8 @@ workspace "CourseWork"
 		}
 
 
-		targetdir (root .. "bin/"       .. outputdir)  -- Destination directory for compiled binary target
-		objdir    (root .. "bin_inter/" .. outputdir)  -- Destination directory for object and other intermediate files
+		targetdir (root .. bindir)  -- Destination dir for compiled binary target
+		objdir    (root .. "bin_inter/" .. outputdir)  -- Destination dir for object and other intermediate files
 
 		-- Include file search paths for the compiler
 		includedirs {
@@ -65,6 +66,7 @@ workspace "CourseWork"
 
 		files {
 			srcdir  .. "/**.h",
+			srcdir  .. "/**.c",
 			srcdir  .. "/**.hpp",
 			srcdir  .. "/**.cpp",
 
@@ -80,17 +82,10 @@ workspace "CourseWork"
 
 		-- List of libraries & projects to link against
 		links {
-			"glfw/bin/"  .. outputdir .. "/GLFW.lib",
-			"glad/bin/"  .. outputdir .. "/Glad.lib",
-			"imgui/bin/" .. outputdir .. "/ImGui.lib",
+			"glfw/"  .. bindir .. "/GLFW.lib",
+			"glad/"  .. bindir .. "/Glad.lib",
+			"imgui/" .. bindir .. "/ImGui.lib",
 			"opengl32.lib"
-		}
-
-
-		postbuildcommands {
-			"xcopy /y /i /q /d    %{wks.location}\\bin\\%{outputdir}\\*.exe " .. builddir,
-			"xcopy /y /i /q /d    %{wks.location}\\*.ini "                    .. builddir,
-			"xcopy /y /i /q /d /e %{wks.location}\\assets\\* "                .. builddir .. "\\assets"
 		}
 
 

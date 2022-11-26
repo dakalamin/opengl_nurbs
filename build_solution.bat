@@ -8,4 +8,4 @@ echo. && pause
 ::returns cmd to original location
 ::if the script was called not from its own one
 popd
-exit /b
+exit /b 0

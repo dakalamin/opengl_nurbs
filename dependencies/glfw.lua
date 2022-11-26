@@ -23,12 +23,12 @@ project "GLFW"
 		incdir .. "glfw3native.h",
 		
 		srcdir .. "context.c",
+		srcdir .. "glfw_config.h",
 		srcdir .. "init.c",
 		srcdir .. "input.c",
 		srcdir .. "internal.h",
 		srcdir .. "monitor.c",
 		srcdir .. "platform.c",
-		srcdir .. "glfw_config.h",
 		srcdir .. "vulkan.c",  -- can't remove this, turns out it's used by some "win_**.c"
 		srcdir .. "window.c",
 
@@ -41,20 +41,24 @@ project "GLFW"
 
 
 	filter "system:linux"
-		pic "On"
-
 		systemversion "latest"
+		pic "On"
 		
 		files {
 			srcdir .. "x11_init.c",
 			srcdir .. "x11_monitor.c",
+			srcdir .. "x11_platform.c",
 			srcdir .. "x11_window.c",
+
 			srcdir .. "xkb_unicode.c",
+
 			srcdir .. "posix_time.c",
 			srcdir .. "posix_thread.c",
-			srcdir .. "glx_context.c",
+
 			srcdir .. "egl_context.c",
+			srcdir .. "glx_context.c",
 			srcdir .. "osmesa_context.c",
+
 			srcdir .. "linux_joystick.c"
 		}
 
@@ -74,8 +78,9 @@ project "GLFW"
 			srcdir .. "win32_thread.c",
 			srcdir .. "win32_time.c",
 			srcdir .. "win32_window.c",
-			srcdir .. "wgl_context.c",
+
 			srcdir .. "egl_context.c",
+			srcdir .. "wgl_context.c",
 			srcdir .. "osmesa_context.c"
 		}
 

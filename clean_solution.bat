@@ -3,7 +3,7 @@
 pushd %~dp0
 
 echo WARNING! YOU ARE GOING TO CLEAN THE SOLUTION
-echo SOME FILES MAY BE LOST PERMANENTLY
+echo SOME FILES WILL BE LOST PERMANENTLY
 echo.
 
 
@@ -13,6 +13,7 @@ set /p choice=Would you like to proceed? [Y/N]:
 
 ::if input is longer than one symbol, read the first & dump remaining
 if not '%choice%' == ''  set choice=%choice:~0,1%
+
 if /i  '%choice%' == 'Y' goto yes
 if /i  '%choice%' == 'N' goto no
 ::default behavior - no option is intepreted as NO

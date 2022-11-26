@@ -32,6 +32,7 @@ project "ImGui"
 		srcdir .. "imstb_rectpack.h",
 		srcdir .. "imstb_textedit.h",
 		srcdir .. "imstb_truetype.h",
+
 		srcdir .. "imgui_demo.cpp",
 
 		srcdir .. "misc/freetype/imgui_freetype.cpp",
