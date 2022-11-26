@@ -1,0 +1,54 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+!dependencies/freetype/*.lib
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Log files
+*.log
+
+# .bat scripts (except project maintenance related)
+*.bat
+!build_solution.bat
+!clean_solution.bat
+
+# Binaries & Executables
+bin/
+bin_inter/
+build/
+*.exe
+*.out
+*.app
+
+# Visual Studio folders & files 
+.vs/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+
+# Miscellaneous
+vendor/premake

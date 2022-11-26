@@ -1,0 +1,79 @@
+{
+	"Setup" :
+	{
+		"project_name" : "Veresk",
+		"help" :
+		[
+			"usage: [your_system_path_to_python]/python setup.py [options] ...\n",
+			"Only one or no arguments is expected, otherwise Exception is raised\n\n",
+
+			"Options and arguments:\n",
+			 "--default\t: downloads {Premake['name']} if not found in {Premake['directory']}\n",
+	        "--update\t\t: checks if latest version of {Premake['name']} is installed\n",
+	                "\t\t  if not, downloads it\n",
+	         "--force\t\t: downloads {Premake['name']} rewriting anything found in {Premake['directory']}\n",
+	       "--postbuild\t: <----->\n",
+	         "--clean\t\t: <----->\n",
+	          "--help\t\t: output reference information\n",
+	        "If no option or argument is specified, behaves like -default is passed\n\n",
+
+	        "All debug information is provided during script runtime\n",
+	        "In case any problems encountered, read debug carefully\n",
+	        "If something goes wrong in PREMAKE section, try installing {Premake['name']} manually from...\n",
+	        "{Premake['repos_link']}/releases\n",
+	        "Choose release asset for your specific platform and put it in {Premake['directory']}\n"
+		]
+	},
+
+
+	"Solution" : 
+	{
+		"vs_version" : "vs2019",
+
+		"src_dir"    : "source",
+		"inc_dir"    : "include",
+		"deps_dir"   : "dependencies",
+
+		"bin_dir"    : "bin",
+		"binint_dir" : "bin_inter",
+
+		"postbuild_dir" : "build",
+
+		"fs_tocopy"  : ["{bin_dir}/{outputdir}/*.exe", "*.ini"],
+		"ds_tocopy"  : ["assets"],
+
+		"fs_todel"   : ["*.sln", "*.vcxproj*"],
+		"ds_todel"   : ["{bin_dir}", "{binint_dir}", "{postbuild_dir}"]
+	},
+
+
+	"Premake" :
+	{
+		"name" : "Premake5",
+
+		"directory" : "vendor/premake",
+		"version"   : "{directory}/VERSION",
+		"license"   : "{directory}/LICENSE",
+		"path"      : "{directory}/premake5",
+
+		"extension" :
+		{
+			"win32" : ".exe",
+			"linux" : ".run"
+		},
+
+		"user_rep"  : "/premake/premake-core",
+
+		"license_link"  : "https://raw.githubusercontent.com{user_rep}/master/LICENSE.txt",
+		"repos_link"    : "https://github.com{user_rep}",
+		"api_link"      : "https://api.github.com/repos{user_rep}",
+		"releases_link" : "{api_link}/releases",
+
+		"asset_name" :
+		{
+		    "win32"  : "windows.zip",
+		    "linux"  : "linux.tar.gz",
+		    "darwin" : "macosx.tar.gz"
+		}
+	}
+}
