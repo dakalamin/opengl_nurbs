@@ -3,90 +3,91 @@
 
 
 project "GLFW"
-	location "glfw"
+	local project_name = "glfw"
+	local src_dir = project_name .. "/src/"
+	local inc_dir = project_name .. "/include/GLFW/"
+
+
+	location ( project_name )
 
 	kind "StaticLib"
 	language "C"
 	staticruntime "off"
 
-	targetdir ( "%{prj.location}/bin/"       .. outputdir )
-	objdir    ( "%{prj.location}/bin_inter/" .. outputdir )
+	targetdir ( "%{prj.location}/" .. bin_dir      )
+	objdir    ( "%{prj.location}/" .. bininter_dir )
 
-
-	local srcdir = "glfw/src/"
-	local incdir = "glfw/include/GLFW/"
-
-	includedirs { "glfw/include" }
+	includedirs { inc_dir }
 
 	files {
-		incdir .. "glfw3.h",
-		incdir .. "glfw3native.h",
+		inc_dir .. "glfw3.h",
+		inc_dir .. "glfw3native.h",
 		
-		srcdir .. "context.c",
-		srcdir .. "glfw_config.h",
-		srcdir .. "init.c",
-		srcdir .. "input.c",
-		srcdir .. "internal.h",
-		srcdir .. "monitor.c",
-		srcdir .. "platform.c",
-		srcdir .. "vulkan.c",  -- can't remove this, turns out it's used by some "win_**.c"
-		srcdir .. "window.c",
+		src_dir .. "context.c",
+		src_dir .. "glfw_config.h",
+		src_dir .. "init.c",
+		src_dir .. "input.c",
+		src_dir .. "internal.h",
+		src_dir .. "monitor.c",
+		src_dir .. "platform.c",
+		src_dir .. "vulkan.c",
+		src_dir .. "window.c",
 
-		srcdir .. "null_init.c",
-		srcdir .. "null_joystick.c",
-		srcdir .. "null_monitor.c",
-		srcdir .. "null_platform.h",
-		srcdir .. "null_window.c"		
+		src_dir .. "null_init.c",
+		src_dir .. "null_joystick.c",
+		src_dir .. "null_monitor.c",
+		src_dir .. "null_platform.h",
+		src_dir .. "null_window.c"		
 	}
 
+
+	filter "system:windows"
+		systemversion "latest"
+
+		files {
+			src_dir .. "win32_init.c",
+			src_dir .. "win32_joystick.c",
+			src_dir .. "win32_module.c",
+			src_dir .. "win32_monitor.c",
+			src_dir .. "win32_platform.h",
+			src_dir .. "win32_thread.c",
+			src_dir .. "win32_time.c",
+			src_dir .. "win32_window.c",
+
+			src_dir .. "egl_context.c",
+			src_dir .. "wgl_context.c",
+			src_dir .. "osmesa_context.c"
+		}
+
+		defines { 
+			"_GLFW_WIN32",
+			"_CRT_SECURE_NO_WARNINGS"
+		}
 
 	filter "system:linux"
 		systemversion "latest"
 		pic "On"
 		
 		files {
-			srcdir .. "x11_init.c",
-			srcdir .. "x11_monitor.c",
-			srcdir .. "x11_platform.c",
-			srcdir .. "x11_window.c",
+			src_dir .. "x11_init.c",
+			src_dir .. "x11_monitor.c",
+			src_dir .. "x11_platform.c",
+			src_dir .. "x11_window.c",
 
-			srcdir .. "xkb_unicode.c",
+			src_dir .. "xkb_unicode.c",
 
-			srcdir .. "posix_time.c",
-			srcdir .. "posix_thread.c",
+			src_dir .. "posix_time.c",
+			src_dir .. "posix_thread.c",
 
-			srcdir .. "egl_context.c",
-			srcdir .. "glx_context.c",
-			srcdir .. "osmesa_context.c",
+			src_dir .. "egl_context.c",
+			src_dir .. "glx_context.c",
+			src_dir .. "osmesa_context.c",
 
-			srcdir .. "linux_joystick.c"
+			src_dir .. "linux_joystick.c"
 		}
 
 		defines {
 			"_GLFW_X11"
-		}
-
-	filter "system:windows"
-		systemversion "latest"
-
-		files {
-			srcdir .. "win32_init.c",
-			srcdir .. "win32_joystick.c",
-			srcdir .. "win32_module.c",
-			srcdir .. "win32_monitor.c",
-			srcdir .. "win32_platform.h",
-			srcdir .. "win32_thread.c",
-			srcdir .. "win32_time.c",
-			srcdir .. "win32_window.c",
-
-			srcdir .. "egl_context.c",
-			srcdir .. "wgl_context.c",
-			srcdir .. "osmesa_context.c"
-		}
-
-		defines { 
-			"_GLFW_WIN32",
-			"_CRT_SECURE_NO_WARNINGS"
 		}
 
 	filter "configurations:Debug"
@@ -96,3 +97,8 @@ project "GLFW"
 	filter "configurations:Release"
 		runtime "Release"
 		optimize "on"
+
+	filter {}  -- reset filter
+
+	
+	success ( project_name )

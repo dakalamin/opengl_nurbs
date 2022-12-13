@@ -1,80 +1,104 @@
+import click
+
 import os
-import sys
 import shutil
 import subprocess as subproc
 
-from premake import g_name as premake_name
-from premake import g_path as premake_path
-
+from glob    import glob
 from pathlib import Path
 
 
-g_vs_version = 'vs2022'
-g_deps_dir   = 'dependencies'
-
-
-def build():
+@click.group()
+@click.pass_context
+def solution(ctx):
     """
-    BUILD SOLUTION FILES FOR VS2022
+    Project solution management section
     """
-    
-    print(f"\nRunning {premake_name}...")
-    # running a cmd command like '[path_to_premake.exe]/premake5 vs2019'
-    # that runs the lua script in project root dir
-    # prebuilding it for Visual Studio 2019
-    subproc.run((premake_path, g_vs_version))
+    ctx.ensure_object(dict)
 
 
-def _rm_df(cwd):
+@solution.command()
+@click.option('--ide', type=str, help="IDE version to generate project files for",
+              prompt="Enter IDE name to generate project files for", prompt_required=False)
+@click.pass_context
+def generate(ctx, ide):
     """
-    REMOVE DIRS&FILES
+    Generate project solution files
     """
-    
-    smth_deleted = False
-    
-    fstodel = ('*.sln', '*.vcxproj*')        # files to delete
-    dstodel = ('bin', 'bin_inter', 'build')  # directories to delete
-    
-    for folder in os.scandir(cwd):
-        if folder.name in dstodel:
-            shutil.rmtree(folder)
-            smth_deleted = True
-            print(f"Removed dir\t{cwd.joinpath(folder)}")
+    if ide is None:
+        ide = ctx.obj['config']['ide']
 
-    for template in fstodel:
-        for file in cwd.glob(template):
-            os.remove(file)
-            smth_deleted = True
-            print(f"Deleted file\t{file}")
+    click.echo(f"Generating {ide} project files...")
+    subproc.run(
+        f"\"{ctx.obj['config']['premake']['exe']}\" {ide} --file={ctx.obj['config']['premake']['lua']}",
+        shell=True)
 
-    return smth_deleted
-
-
-def clean():
+@solution.command()
+@click.argument('build_dir',  type=click.Path())
+@click.pass_context
+def copy(ctx, build_dir):
     """
-    DELETE ALL SOLUTION RELATED DIRS&FILES
-    also cleans all dependent subproject folders
+    Copy dirs&files configured in <to_copy> to build_dir
     """
-    
-    # CWD - current working directory
-    cwd = Path(os.getcwd())
-    smth_deleted = 0
-    
-    smth_deleted += _rm_df(cwd)
-    cwd = cwd.joinpath(g_deps_dir)
-    if cwd.exists():
-        for folder in os.scandir(cwd):
-            if folder.is_dir():
-                smth_deleted += _rm_df(Path(folder))
+    click.echo(f"Copying dirs&files configured in <to_copy> section of {ctx.obj['config_filename']}...\n")
+
+    build_path = Path(click.format_filename(build_dir))
+
+    for pattern in ctx.obj['config']['to_copy']['dirs']:
+        for dir_name in glob(pattern):
+            shutil.copytree(dir_name, build_path.joinpath(dir_name))
+
+    for pattern in ctx.obj['config']['to_copy']['files']:
+        for file_name in glob(pattern):
+            shutil.copy(file_name, build_path)
+
+
+@click.option('-h', '--hard', default=False, is_flag=True,
+              help="Perform the hard cleanup")
+@solution.command()
+@click.pass_context
+def clean(ctx, hard):
+    """
+    Clean dirs&files configured in <to_delete(_hard)>
+    """
+    click.echo(f"Warning! You are about to clean up {'(HARD) ' if hard else ''}the solution")
+    click.echo(f"by deleting dirs and folders specified in <{ctx.obj['config_filename']}>")
+    click.echo( "\nSOME UNSAVED WORK MAY BE LOST!")
+    if not click.confirm("Are you sure you'd like to proceed?"):
+        return
+
+    dirs, files = 0, 0
+
+    message = "\nDeleting dirs&files configured in " + \
+              "<to delete> and <to_delete_hard> sections" if hard else "<to delete> section" + \
+             f" of {ctx.obj['config_filename']}...\n"
+    click.echo(message)
+
+    dir_patterns  = ctx.obj['config']['to_delete']['dirs']
+    file_patterns = ctx.obj['config']['to_delete']['files']
+    if hard:
+        dir_patterns  += ctx.obj['config']['to_delete_hard']['dirs']
+        file_patterns += ctx.obj['config']['to_delete_hard']['files']
+
+    for pattern in dir_patterns:
+        for dir_name in glob(pattern):
+            shutil.rmtree(dir_name, ignore_errors=True)
+
+            dirs += 1
+            click.echo(f"Deleted dir \t{dir_name}")
+
+    for pattern in file_patterns:
+        for file_name in glob(pattern):
+            os.remove(file_name)
+            
+            files += 1
+            click.echo(f"Deleted file \t{file_name}")
+
+    if dirs or files:
+        click.echo()
+        if dirs:
+            click.echo(f"{dirs} dir{'s have' if dirs > 1 else ' has'} been deleted")
+        if files:
+            click.echo(f"{files} file{'s have' if files > 1 else ' has'} been deleted")
     else:
-        print(f"DEPENDENCIES folder cannot be found")
-        print(f"Please, check deps_dir value in {__file__}")
-        print(f"(now it's <{g_deps_dir}\\>) so it matches")
-        print(f"the folder that contains all project dependencies")
-
-    if not smth_deleted:
-        print("\nNo dirs/files deleted - solution is already cleaned")
-
-
-if __name__ == "__main__":
-    raise Exception("This script is for import only!")
+        click.echo("No dirs/files deleted - solution has already been cleaned")

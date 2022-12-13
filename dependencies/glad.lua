@@ -3,27 +3,29 @@
 
 
 project "Glad"
-	location "glad"
+	local project_name = "glad"
+	local src_dir = project_name .. "/src/"
+	local inc_dir = project_name .. "/include/"
+
+
+	location ( project_name )
 
 	kind "StaticLib"
 	language "C"
 	staticruntime "off"
 	
-	targetdir ( "%{prj.location}/bin/"       .. outputdir )
-	objdir    ( "%{prj.location}/bin_inter/" .. outputdir )
+	targetdir ( "%{prj.location}/" .. bin_dir      )
+	objdir    ( "%{prj.location}/" .. bininter_dir )
 
-
-	local srcdir = "glad/src/"
-	local incdir = "glad/include/"
-
-	includedirs { incdir }
+	includedirs { inc_dir }
 
 	files {
-		incdir .. "glad/gl.h",
-		incdir .. "KHR/khrplatform.h",
+		inc_dir .. "glad/glad.h",
+		inc_dir .. "KHR/khrplatform.h",
 
-		srcdir .. "gl.c"
+		src_dir .. "glad.c"
 	}
+
 
 	filter "configurations:Debug"
 		runtime "Debug"
@@ -32,3 +34,8 @@ project "Glad"
 	filter "configurations:Release"
 		runtime "Release"
 		optimize "on"
+
+	filter {}  -- reset filter
+
+
+	success ( project_name )

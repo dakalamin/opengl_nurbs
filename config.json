@@ -1,0 +1,104 @@
+{
+	"project_name" : "CourseWork",
+	"ide" : "vs2022",
+
+	"dir" :
+	{
+		"src"      : "source",
+		"include"  : "include",
+		"deps"     : "dependencies",
+		"external" : "extern",
+		"script"   : "scripts",
+
+		"binaries"              : "bin",
+		"binaries_intermediate" : "bin_inter",
+
+		"build" : "build"
+	},
+
+	"to_copy" :
+	{
+		"dirs" :
+		[
+			"assets"
+		],
+		"files" :
+		[
+			"{dir[binaries]}/*/*.exe",
+			"*.ini"
+		]
+	},
+	"to_delete" :
+	{
+		"dirs" :
+		[
+			"{dir[binaries]}",
+			"{dir[binaries_intermediate]}",
+			"{dir[build]}",
+
+			"{dir[deps]}/*/{dir[binaries]}",
+			"{dir[deps]}/*/{dir[binaries_intermediate]}",
+			"{dir[deps]}/*/{dir[build]}",
+
+			"{dir[script]}/__pycache__",
+
+			".vs"
+		],
+		"files" :
+		[
+			"*.sln",
+			"*.vcxproj*"
+		]
+	},
+	"to_delete_hard" :
+	{
+		"dirs" :
+		[
+			"{premake[dir]}",
+			"{venv[path]}"
+		],
+		"files" :
+		[
+			"*.ini"
+		]
+	},
+
+	"venv" :
+	{
+		"name"         : "env",
+		"path"         : "{dir[script]}/{venv[name]}",
+		"bat"          : "{dir[script]}/venv.bat",
+		"bat_template" : "{dir[script]}/venv.bat_template"
+	},
+
+	"premake" :
+	{
+		"name" : "Premake5",
+		"lua"  : "premake.lua",
+
+		"dir"     : "{dir[external]}/premake",
+		"exe"     : "{premake[dir]}/premake5",
+		"version" : "{premake[dir]}/VERSION",
+		"license" : "{premake[dir]}/LICENSE",
+
+		"extension" :
+		{
+			"win32" : ".exe",
+			"linux" : ".run"
+		},
+
+		"asset_name" :
+		{
+			"win32"  : "windows.zip",
+			"linux"  : "linux.tar.gz",
+			"darwin" : "macosx.tar.gz"
+		},
+
+		"user_repos" : "premake/premake-core",
+
+		"license_link"  : "https://raw.githubusercontent.com/{premake[user_repos]}/master/LICENSE.txt",
+		"repos_link"    : "https://github.com/{premake[user_repos]}",
+		"api_link"      : "https://api.github.com/repos/{premake[user_repos]}",
+		"releases_link" : "{premake[api_link]}/releases"
+	}
+}

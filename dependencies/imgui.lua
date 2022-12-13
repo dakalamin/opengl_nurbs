@@ -3,40 +3,41 @@
 
 
 project "ImGui"
-	location "imgui"
+	local project_name = "imgui"
+	local src_dir = project_name .. "/"
+
+
+	location ( project_name )
 
 	kind "StaticLib"
 	language "C++"
 
-	targetdir ( "%{prj.location}/bin/"       .. outputdir )
-	objdir    ( "%{prj.location}/bin_inter/" .. outputdir )
-
-
-	local srcdir = "imgui/"
+	targetdir ( "%{prj.location}/" .. bin_dir      )
+	objdir    ( "%{prj.location}/" .. bininter_dir )
 
 	includedirs {
-		srcdir,
-		srcdir .. "misc/freetype/",
+		src_dir,
+		src_dir .. "misc/freetype/",
 
 		"freetype/include/"
 	}
 
 	files {
-		srcdir .. "imconfig.h",
-		srcdir .. "imgui.h",
-		srcdir .. "imgui.cpp",
-		srcdir .. "imgui_draw.cpp",
-		srcdir .. "imgui_internal.h",
-		srcdir .. "imgui_tables.cpp",
-		srcdir .. "imgui_widgets.cpp",
-		srcdir .. "imstb_rectpack.h",
-		srcdir .. "imstb_textedit.h",
-		srcdir .. "imstb_truetype.h",
+		src_dir .. "imconfig.h",
+		src_dir .. "imgui.h",
+		src_dir .. "imgui.cpp",
+		src_dir .. "imgui_draw.cpp",
+		src_dir .. "imgui_internal.h",
+		src_dir .. "imgui_tables.cpp",
+		src_dir .. "imgui_widgets.cpp",
+		src_dir .. "imstb_rectpack.h",
+		src_dir .. "imstb_textedit.h",
+		src_dir .. "imstb_truetype.h",
 
-		srcdir .. "imgui_demo.cpp",
+		src_dir .. "imgui_demo.cpp",
 
-		srcdir .. "misc/freetype/imgui_freetype.cpp",
-		srcdir .. "misc/freetype/imgui_freetype.h"
+		src_dir .. "misc/freetype/imgui_freetype.cpp",
+		src_dir .. "misc/freetype/imgui_freetype.h"
 	}
 
 	links { "freetype/freetype.lib" }
@@ -49,3 +50,8 @@ project "ImGui"
 	filter "configurations:Release"
 		runtime "Release"
 		optimize "on"
+
+	filter {}  -- reset filter
+
+
+	success ( project_name )
