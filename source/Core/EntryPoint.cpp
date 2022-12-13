@@ -1,7 +1,7 @@
 #include "Core/Base.h"
 
-#include "glad/gl.h"
-#include "GLFW/glfw3.h"
+#include "glad.h"
+#include "glfw3.h"
 
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 	glfwSwapInterval(1); // Enable vsync
 
 
-	if (!gladLoadGL(glfwGetProcAddress))
+	if (!gladLoadGL())
 		return 1;
 
 	std::cout << "[OpenGL Info]\n";
