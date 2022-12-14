@@ -6,7 +6,7 @@
 #include "Core/PlatformDetector.h"
 
 
-#ifdef CW_DEBUG // (in premake5.lua)
+#ifdef CW_DEBUG // (in premake.lua)
 	// -- (in Core/PlatformDetector.h) --
 	#if defined(CW_PLATFORM_WINDOWS)           // Windows x64
 		#define CW_DEBUGBREAK() __debugbreak()
@@ -18,7 +18,7 @@
 	#endif
 
 	#define CW_ENABLE_ASSERTS
-#elif CW_RELEASE // (in premake5.lua)
+#elif CW_RELEASE // (in premake.lua)
 	#define CW_DEBUGBREAK()
 #else
 	#error "Unknown configuration, expected CW_DEBUG/CW_RELEASE!"

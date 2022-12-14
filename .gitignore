@@ -50,4 +50,5 @@ build/
 **.vcxproj.user
 
 # Miscellaneous
-vendor/premake
+/extern/premake
+/scripts/env
