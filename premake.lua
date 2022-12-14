@@ -39,7 +39,6 @@ workspace ( project_name )
 	-- Virtual dir to contain several projects
 	group "DEPENDENCIES"
 		include ( config.dir.deps .. "\\glfw.lua"  )
-		include ( config.dir.deps .. "\\glad.lua"  )
 		include ( config.dir.deps .. "\\imgui.lua" )
 		-- 'glm'      does not require compilation, it's header only
 		-- 'freetype' does not require compilation, it has a compiled lib & is used only inside imgui
@@ -61,7 +60,6 @@ workspace ( project_name )
 
 		dependson {
 			"GLFW",
-			"Glad",
 			"ImGui"
 		}
 
@@ -76,8 +74,6 @@ workspace ( project_name )
 
 			deps_dir .. "\\glfw\\include",
 			deps_dir .. "\\glfw\\include\\GLFW",
-			deps_dir .. "\\glad\\include",
-			deps_dir .. "\\glad\\include\\glad",
 			deps_dir .. "\\imgui",
 			deps_dir .. "\\glm"
 		}
@@ -101,7 +97,6 @@ workspace ( project_name )
 		-- List of libraries & projects to link against
 		links {
 			"glfw\\"  .. bin_dir .. "\\GLFW.lib",
-			"glad\\"  .. bin_dir .. "\\Glad.lib",
 			"imgui\\" .. bin_dir .. "\\ImGui.lib",
 			"opengl32.lib"
 		}
