@@ -46,7 +46,7 @@ def copy(ctx, build_dir):
 
     for pattern in ctx.obj['config']['to_copy']['dirs']:
         for dir_name in glob(pattern):
-            shutil.copytree(dir_name, build_path.joinpath(dir_name))
+            shutil.copytree(dir_name, build_path.joinpath(dir_name), dirs_exist_ok=True)
 
     for pattern in ctx.obj['config']['to_copy']['files']:
         for file_name in glob(pattern):
