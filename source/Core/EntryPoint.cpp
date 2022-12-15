@@ -21,9 +21,15 @@ void GLFWErrorCallback(int error, const char* description)
 void GLFWWindowCloseCallback(GLFWwindow* window)
 {
 	std::cout << "GLFW Window Close Callback Successful\n";
-	glfwDestroyWindow(window);
 }
 
+
+GLfloat ctrlpoints[4][4][3] = {
+ {{-1.5f, 1.f, -1.5f}, {-0.5f, 1.f, -1.5f}, {0.5f, 1.f, -1.5f}, {1.5f, 1.f, -1.5f}},
+ {{-1.5f, 1.f, -0.5f}, {-0.5f, 2.f, -0.5f}, {0.5f, 2.f, -0.5f}, {1.5f, 1.f, -0.5f}},
+ {{-1.5f, 1.f,  0.5f}, {-0.5f, 2.f,  0.5f}, {0.5f, 2.f,  0.5f}, {1.5f, 1.f,  0.5f}},
+ {{-1.5f, 1.f,  1.5f}, {-0.5f, 1.f,  1.5f}, {0.5f, 1.f,  1.5f}, {1.5f, 1.f,  1.5f}}
+};
 
 int main(int argc, char** argv)
 {
@@ -32,8 +38,8 @@ int main(int argc, char** argv)
 		return -1;
 
 	// Hinting sctrictly before window creation!
-	const char* glsl_version = "#version 420";
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);	// using OpenGL ver 4.2 [Compatible]
+	const char* glsl_version = "#version 120";
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);	// using OpenGL ver 4.2 [Compatible]
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 	#ifdef CW_DEBUG  // (in premake.lua) 
@@ -52,6 +58,16 @@ int main(int argc, char** argv)
 	
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(1); // Enable vsync
+
+	
+	glClearColor(0.f, 0.f, 0.f, 0.f);
+	glMap2f(GL_MAP2_VERTEX_3, 0.f, 1.f, 3, 4, 0.f, 1.f, 12, 4, &ctrlpoints[0][0][0]);
+
+	glEnable(GL_MAP2_VERTEX_3);
+	glMapGrid2f(20, 0.f, 1.f, 20, 0.f, 1.f);
+
+	glEnable(GL_DEPTH_TEST);
+	glShadeModel(GL_FLAT);
 
 
 	std::cout << "[OpenGL Info]\n";
@@ -137,24 +153,46 @@ int main(int argc, char** argv)
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 		float ratio = display_w / (float)display_h;
 
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glColor3f(1.f, 1.f, 1.f);
+		glPushMatrix();
+
+		glRotatef(30, 1.f, 0.f, 0.f);
+		glRotatef((float)glfwGetTime() * 20.f, 0.f, 0.1f, 0.f);
+		glTranslatef(0.f, -1.f, 0.f);
+
+		int a = 8, b = 30;
+		for (int j = 0; j <= a; j++) {
+			glBegin(GL_LINE_STRIP);
+			for (int i = 0; i <= b; i++)
+				glEvalCoord2f((GLfloat)i / (float)b, (GLfloat)j / (float)a);
+			glEnd();
+
+			glBegin(GL_LINE_STRIP);
+			for (int i = 0; i <= b; i++)
+				glEvalCoord2f((GLfloat)j / (float)a, (GLfloat)i / (float)b);
+			glEnd();
+		}
+		glPopMatrix();
+		glFlush();
+
 		glViewport(0, 0, display_w, display_h);
-		glClear(GL_COLOR_BUFFER_BIT);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		glOrtho(-ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-		
+
+		float factor = 2.f;
+		if (display_w > display_h)
+		{
+			GLfloat wh = (GLfloat)display_w / (GLfloat)display_h;
+			glOrtho(-factor * wh, factor * wh, -factor, factor, 5.f, -5.f);
+		}
+		else
+		{
+			GLfloat hw = (GLfloat)display_h / (GLfloat)display_w;
+			glOrtho(-factor, factor, -factor * hw, factor * hw, -5.f, 5.f);
+		}
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glRotatef((float)glfwGetTime() * 10.f, 0.f, 0.f, 1.f);
-		
-		glBegin(GL_TRIANGLES);
-		glColor3f(  1.0f,  0.0f, 0.f);
-		glVertex3f(-0.6f, -0.4f, 0.f);
-		glColor3f(  0.0f,  1.0f, 0.f);
-		glVertex3f( 0.6f, -0.4f, 0.f);
-		glColor3f(  0.0f,  0.0f, 1.f);
-		glVertex3f( 0.0f,  0.6f, 0.f);
-		glEnd();
 
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());		
 		glfwSwapBuffers(window);
@@ -164,6 +202,7 @@ int main(int argc, char** argv)
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 
+	glfwDestroyWindow(window);
 	glfwTerminate();
 	return 0;
 }
