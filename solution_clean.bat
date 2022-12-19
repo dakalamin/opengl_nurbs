@@ -1,5 +1,5 @@
 @echo OFF
 
-call scripts\setup.py solution clean
+call python scripts\setup.py solution clean
 
 pause

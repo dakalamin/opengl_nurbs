@@ -104,7 +104,7 @@ workspace ( project_name )
 
 
 		postbuildcommands {
-			"\"" .. config.dir.script .. "\"\\" .. "setup.py solution copy " .. build_dir
+			"python \"" .. root_dir .. config.dir.script.. "\\" .. "setup.py\" solution copy " .. build_dir
 		}
 
 

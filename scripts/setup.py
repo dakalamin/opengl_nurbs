@@ -7,9 +7,10 @@ from pathlib import Path
 
 
 min_version = (3, 8)  # Because of walrus operators
-    if sys.version_info[0:2] < min_version:
-        print(f"This script requires Python version not less that {'.'.join(min_version)}")
-        exit()
+if sys.version_info[0:2] < min_version:
+    errmsg = f"This script requires Python version {min_version[0]}.{min_version[1]}+"
+    raise RuntimeError(errmsg)
+    
 
 config_filename = "config.json"
 
@@ -17,7 +18,7 @@ prjdir = Path.cwd()
 while not prjdir.joinpath(config_filename).exists():
     if str(prjdir := prjdir.parent) == prjdir.anchor:
         errmsg = "This script must be executed only somewhere from the project directory!"
-        raise Exception(errmsg)
+        raise RuntimeError(errmsg)
 
 
 with open(prjdir.joinpath(config_filename), 'r') as config_file:

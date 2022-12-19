@@ -1,7 +1,7 @@
 @echo OFF
 
-call scripts\setup.py premake install
+call python scripts\setup.py premake install
 echo.
-call scripts\setup.py solution generate
+call python scripts\setup.py solution generate
 
 pause
