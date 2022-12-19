@@ -98,6 +98,7 @@ workspace ( project_name )
 		links {
 			"glfw\\"  .. bin_dir .. "\\GLFW.lib",
 			"imgui\\" .. bin_dir .. "\\ImGui.lib",
+			"Glu32.lib",
 			"opengl32.lib"
 		}
 
