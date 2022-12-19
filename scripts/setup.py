@@ -6,6 +6,11 @@ import subprocess as subproc
 from pathlib import Path
 
 
+min_version = (3, 8)  # Because of walrus operators
+    if sys.version_info[0:2] < min_version:
+        print(f"This script requires Python version not less that {'.'.join(min_version)}")
+        exit()
+
 config_filename = "config.json"
 
 prjdir = Path.cwd()
