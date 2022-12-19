@@ -1,4 +1,5 @@
 #include "Core/Base.h"
+#include <vector>
 
 // The GLFW header can detect most such headers if they are included first
 // and will then not include the one from your development environment.
@@ -13,6 +14,15 @@
 #include "backends/imgui_impl_opengl3.h"
 
 
+bool showPoints = true;
+GLfloat ctrlpoints[4][4][3] = {
+	{{-1.5f, -0.5f, -1.5f}, {-0.5f,  1.f, -1.5f}, {0.5f, -1.f, -1.5f}, {1.5f,  0.5f, -1.5f}},
+	{{-1.5f,  1.f,  -0.5f}, {-0.5f,  0.f, -0.5f}, {0.5f,  0.f, -0.5f}, {1.5f, -1.f,  -0.5f}},
+	{{-1.5f, -1.f,   0.5f}, {-0.5f,  0.f,  0.5f}, {0.5f,  0.f,  0.5f}, {1.5f,  1.f,   0.5f}},
+	{{-1.5f,  0.5f,  1.5f}, {-0.5f, -1.f,  1.5f}, {0.5f,  1.f,  1.5f}, {1.5f, -0.5f,  1.5f}}
+};
+
+
 void GLFWErrorCallback(int error, const char* description)
 {
 	std::cerr << "GLFW Error " << error << ": " << description << '\n';
@@ -23,13 +33,6 @@ void GLFWWindowCloseCallback(GLFWwindow* window)
 	std::cout << "GLFW Window Close Callback Successful\n";
 }
 
-
-GLfloat ctrlpoints[4][4][3] = {
- {{-1.5f, 1.f, -1.5f}, {-0.5f, 1.f, -1.5f}, {0.5f, 1.f, -1.5f}, {1.5f, 1.f, -1.5f}},
- {{-1.5f, 1.f, -0.5f}, {-0.5f, 2.f, -0.5f}, {0.5f, 2.f, -0.5f}, {1.5f, 1.f, -0.5f}},
- {{-1.5f, 1.f,  0.5f}, {-0.5f, 2.f,  0.5f}, {0.5f, 2.f,  0.5f}, {1.5f, 1.f,  0.5f}},
- {{-1.5f, 1.f,  1.5f}, {-0.5f, 1.f,  1.5f}, {0.5f, 1.f,  1.5f}, {1.5f, 1.f,  1.5f}}
-};
 
 int main(int argc, char** argv)
 {
@@ -59,21 +62,37 @@ int main(int argc, char** argv)
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(1); // Enable vsync
 
-	
-	glClearColor(0.f, 0.f, 0.f, 0.f);
-	glMap2f(GL_MAP2_VERTEX_3, 0.f, 1.f, 3, 4, 0.f, 1.f, 12, 4, &ctrlpoints[0][0][0]);
-
-	glEnable(GL_MAP2_VERTEX_3);
-	glMapGrid2f(20, 0.f, 1.f, 20, 0.f, 1.f);
-
-	glEnable(GL_DEPTH_TEST);
-	glShadeModel(GL_FLAT);
-
 
 	std::cout << "[OpenGL Info]\n";
 	std::cout << "      Vendor: " << glGetString(GL_VENDOR) << '\n';
 	std::cout << "    Renderer: " << glGetString(GL_RENDERER) << '\n';
 	std::cout << "     Version: " << glGetString(GL_VERSION) << '\n';
+
+	
+	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+
+	GLUnurbs* nurb = gluNewNurbsRenderer();
+
+	// Set up the NURBS surface properties
+	gluNurbsProperty(nurb, GLU_SAMPLING_TOLERANCE, 25.0);
+	gluNurbsProperty(nurb, GLU_DISPLAY_MODE, GLU_FILL);
+
+	GLfloat mat_diffuse[]   = { 0.9, 0.9, 0.9, 1.0 };
+	GLfloat mat_specular[]  = { 1.0, 1.0, 1.0, 1.0 };
+	GLfloat mat_shininess[] = { 100.0 };
+	glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
+
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_AUTO_NORMAL);
+	glEnable(GL_NORMALIZE);
+
+	GLfloat knots1[] = { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 };
+	GLfloat knots2[] = { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 };
 
 
 	// Setup Dear ImGui context
@@ -100,7 +119,6 @@ int main(int argc, char** argv)
 
 	bool show_demo_window    = true;
 	bool show_another_window = false;
-	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -112,10 +130,8 @@ int main(int argc, char** argv)
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		
-		
 		if (show_demo_window)
-			ImGui::ShowDemoWindow(&show_demo_window);
-				
+			ImGui::ShowDemoWindow(&show_demo_window);	
 
 		static float f = 0.0f;
 		static int counter = 0;
@@ -125,6 +141,7 @@ int main(int argc, char** argv)
 		ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
 		ImGui::Checkbox("Demo Window", &show_another_window);   // Edit bools storing our window open/close state
 		ImGui::Checkbox("Another Window", &show_another_window);
+		ImGui::Checkbox("Show Control Points", &showPoints);
 
 		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
 		ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
@@ -153,47 +170,46 @@ int main(int argc, char** argv)
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 		float ratio = display_w / (float)display_h;
 
+		glViewport(0, 0, display_w, display_h);
+		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+		
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(45.0, ratio, 1.0, 8.0);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glTranslatef(0.0, 0.0, -5.0);
+
+		
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glColor3f(1.f, 1.f, 1.f);
+		
 		glPushMatrix();
+		glRotatef(15.0, 1.f, 0.f, 0.f);
+		glRotatef((float)glfwGetTime() * 20.f, 0.f, 1.f, 0.f);
 
-		glRotatef(30, 1.f, 0.f, 0.f);
-		glRotatef((float)glfwGetTime() * 20.f, 0.f, 0.1f, 0.f);
-		glTranslatef(0.f, -1.f, 0.f);
+		// Render the NURBS surface
+		gluBeginSurface(nurb);
+		gluNurbsSurface(nurb, 8, knots1, 8, knots2, 4*3, 3,
+			&ctrlpoints[0][0][0], 4, 4, GL_MAP2_VERTEX_3);
+		gluEndSurface(nurb);
 
-		int a = 8, b = 30;
-		for (int j = 0; j <= a; j++) {
-			glBegin(GL_LINE_STRIP);
-			for (int i = 0; i <= b; i++)
-				glEvalCoord2f((GLfloat)i / (float)b, (GLfloat)j / (float)a);
+		if (showPoints) {
+			glPointSize(5.0);
+			glDisable(GL_LIGHTING);
+			glColor3f(1.0, 1.0, 0.0);
+			glBegin(GL_POINTS);
+			for (int i = 0; i < 4; i++) {
+				for (int j = 0; j < 4; j++) {
+					glVertex3f(ctrlpoints[i][j][0], ctrlpoints[i][j][1], ctrlpoints[i][j][2]);
+				}
+			}
 			glEnd();
-
-			glBegin(GL_LINE_STRIP);
-			for (int i = 0; i <= b; i++)
-				glEvalCoord2f((GLfloat)j / (float)a, (GLfloat)i / (float)b);
-			glEnd();
+			glEnable(GL_LIGHTING);
 		}
 		glPopMatrix();
 		glFlush();
-
-		glViewport(0, 0, display_w, display_h);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-
-		float factor = 2.f;
-		if (display_w > display_h)
-		{
-			GLfloat wh = (GLfloat)display_w / (GLfloat)display_h;
-			glOrtho(-factor * wh, factor * wh, -factor, factor, 5.f, -5.f);
-		}
-		else
-		{
-			GLfloat hw = (GLfloat)display_h / (GLfloat)display_w;
-			glOrtho(-factor, factor, -factor * hw, factor * hw, -5.f, 5.f);
-		}
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-
+		
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());		
 		glfwSwapBuffers(window);
 	}
