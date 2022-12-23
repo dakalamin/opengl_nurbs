@@ -1,5 +1,8 @@
 #include "Core/Base.h"
-#include <vector>
+#include "Core/Nurbs.h"
+
+#include <iostream>
+#include <string>
 
 // The GLFW header can detect most such headers if they are included first
 // and will then not include the one from your development environment.
@@ -8,6 +11,7 @@
 // This also allows the two headers to be included in any order.
 #define GLFW_INCLUDE_GLU
 #include "glfw3.h"
+#include "glm/glm.hpp"
 
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
@@ -15,12 +19,6 @@
 
 
 bool showPoints = true;
-GLfloat ctrlpoints[4][4][3] = {
-	{{-1.5f, -0.5f, -1.5f}, {-0.5f,  1.f, -1.5f}, {0.5f, -1.f, -1.5f}, {1.5f,  0.5f, -1.5f}},
-	{{-1.5f,  1.f,  -0.5f}, {-0.5f,  0.f, -0.5f}, {0.5f,  0.f, -0.5f}, {1.5f, -1.f,  -0.5f}},
-	{{-1.5f, -1.f,   0.5f}, {-0.5f,  0.f,  0.5f}, {0.5f,  0.f,  0.5f}, {1.5f,  1.f,   0.5f}},
-	{{-1.5f,  0.5f,  1.5f}, {-0.5f, -1.f,  1.5f}, {0.5f,  1.f,  1.5f}, {1.5f, -0.5f,  1.5f}}
-};
 
 
 void GLFWErrorCallback(int error, const char* description)
@@ -69,17 +67,14 @@ int main(int argc, char** argv)
 	std::cout << "     Version: " << glGetString(GL_VERSION) << '\n';
 
 	
-	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-
-	GLUnurbs* nurb = gluNewNurbsRenderer();
-
-	// Set up the NURBS surface properties
-	gluNurbsProperty(nurb, GLU_SAMPLING_TOLERANCE, 25.0);
-	gluNurbsProperty(nurb, GLU_DISPLAY_MODE, GLU_FILL);
-
-	GLfloat mat_diffuse[]   = { 0.9, 0.9, 0.9, 1.0 };
-	GLfloat mat_specular[]  = { 1.0, 1.0, 1.0, 1.0 };
+	NURBS nurbs(3, 5);
+	
+	GLUnurbs* renderer = gluNewNurbsRenderer();
+	gluNurbsProperty(renderer, GLU_SAMPLING_TOLERANCE, 25.0);
+	gluNurbsProperty(renderer, GLU_DISPLAY_MODE, GLU_FILL);
+	
+	GLfloat mat_diffuse[]   = { 0.9f, 0.9f, 0.9f, 1.f };
+	GLfloat mat_specular[]  = { 1.f,  1.f,  1.f,  1.f };
 	GLfloat mat_shininess[] = { 100.0 };
 	glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
 	glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
@@ -90,10 +85,9 @@ int main(int argc, char** argv)
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_AUTO_NORMAL);
 	glEnable(GL_NORMALIZE);
-
-	GLfloat knots1[] = { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 };
-	GLfloat knots2[] = { 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 };
-
+	
+	
+	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
@@ -116,10 +110,6 @@ int main(int argc, char** argv)
 	io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", 15.0f);
 	io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/sourcesans_pro/SourceSansPro-Regular.ttf", 15.0f);
 
-
-	bool show_demo_window    = true;
-	bool show_another_window = false;
-
 	while (!glfwWindowShouldClose(window))
 	{
 		// Poll and handle events (inputs, window resize, etc.)
@@ -129,40 +119,68 @@ int main(int argc, char** argv)
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		
-		if (show_demo_window)
-			ImGui::ShowDemoWindow(&show_demo_window);	
 
-		static float f = 0.0f;
-		static int counter = 0;
+		ImGui::ShowDemoWindow();
 
-		ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
 
-		ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-		ImGui::Checkbox("Demo Window", &show_another_window);   // Edit bools storing our window open/close state
-		ImGui::Checkbox("Another Window", &show_another_window);
-		ImGui::Checkbox("Show Control Points", &showPoints);
+		ImGui::Begin("NURBS Surface Manager");
+		enum Action { NONE, INSERT, DELETE } action = NONE;
 
-		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-		ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+		static NURBS::Dim dim  = NURBS::U;
+		static size_t place[2] = { 0, 0 };
 
-		counter += ImGui::Button("Button");                     // Buttons return true when clicked (most widgets return true when edited/activated)
-		ImGui::SameLine();
-		ImGui::Text("counter = %d", counter);
-
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f/ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::End();
-
-		if (show_another_window)
+		if (ImGui::CollapsingHeader("Control Points", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			// Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-			ImGui::Begin("Another Window", &show_another_window);
-			ImGui::Text("Hello from another window!");
-			
-			show_another_window = !ImGui::Button("Close Me");
-			ImGui::End();
-		}
+			const char* dims[2] = { "U", "V" };
 
+			action = Action::NONE;
+
+			ImGui::PushItemWidth(60);
+			ImGui::SliderInt("Dim", (int*)&dim, 0, 1, dims[dim]);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0, 20);
+			if (ImGui::BeginTabBar("ActionsTab", ImGuiTabBarFlags_FittingPolicyScroll))
+			{
+				if (ImGui::BeginTabItem("Insertion"))
+				{
+					action = Action::INSERT;
+
+					static int automatic[2] = { 1, 1 };
+					static std::vector<glm::vec3> newCP[2] =
+					{
+						std::vector<glm::vec3>(nurbs.dim[NURBS::reverseDim(dim)], {0.f, 0.f, 0.f}),
+						std::vector<glm::vec3>(nurbs.dim[NURBS::reverseDim(dim)], {0.f, 0.f, 0.f})
+					};
+
+					ImGui::Text("The layer to insert a new line of CP to:");
+					ImGui::SliderInt("# of layer", (int*)&place[dim], 0, nurbs.dim[dim]);
+
+					ImGui::Separator(); 
+					ImGui::Text("CP set modes:");
+					ImGui::RadioButton("Automatic", &automatic[dim], 1); ImGui::SameLine();
+					ImGui::RadioButton("Manual",    &automatic[dim], 0);
+
+					if (automatic[dim])
+						ImGui::Text("*Coords will be approximated");
+
+					ImGui::BeginDisabled(automatic[dim]);
+					for (size_t i = 0; i < nurbs.dim[dim]; i++)
+						ImGui::DragFloat3((dims[dim] + std::to_string(i)).c_str(), &newCP[dim][i][0], 0.1f);
+					ImGui::EndDisabled();
+
+					ImGui::EndTabItem();
+				}
+				if (ImGui::BeginTabItem("Deletion"))
+				{
+					action = Action::DELETE;
+
+					ImGui::Text("This is for Dim Deletion");
+					ImGui::EndTabItem();
+				}
+				ImGui::EndTabBar();
+			}
+		}
+		ImGui::End();
 		ImGui::Render();
 
 
@@ -175,33 +193,52 @@ int main(int argc, char** argv)
 		
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(45.0, ratio, 1.0, 8.0);
+		gluPerspective(45.0, ratio, 0.1, 100.0);
+		
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glTranslatef(0.0, 0.0, -5.0);
-
-		
+		glTranslatef(0.0, 0.0, -10.0);
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
 		glPushMatrix();
-		glRotatef(15.0, 1.f, 0.f, 0.f);
-		glRotatef((float)glfwGetTime() * 20.f, 0.f, 1.f, 0.f);
-
+		glRotatef(-60.f, 1.f, 0.f, 0.f);
+		glRotatef((float)glfwGetTime() * 15.f, 0.f, 0.f, 1.f);
+		
 		// Render the NURBS surface
-		gluBeginSurface(nurb);
-		gluNurbsSurface(nurb, 8, knots1, 8, knots2, 4*3, 3,
-			&ctrlpoints[0][0][0], 4, 4, GL_MAP2_VERTEX_3);
-		gluEndSurface(nurb);
+		gluBeginSurface(renderer);
+		gluNurbsSurface(renderer,
+			nurbs.knots[NURBS::U].size(), nurbs.knots[NURBS::U].data(),
+			nurbs.knots[NURBS::V].size(), nurbs.knots[NURBS::V].data(),
+			3, 3 * nurbs.dim[NURBS::U],
+			&nurbs.controlPoints[0][0],
+			nurbs.degree[NURBS::U] + 1, nurbs.degree[NURBS::V] + 1,
+			GL_MAP2_VERTEX_3);
+		gluEndSurface(renderer);
 
 		if (showPoints) {
-			glPointSize(5.0);
+			glPointSize(5.f);
 			glDisable(GL_LIGHTING);
-			glColor3f(1.0, 1.0, 0.0);
+
 			glBegin(GL_POINTS);
-			for (int i = 0; i < 4; i++) {
-				for (int j = 0; j < 4; j++) {
-					glVertex3f(ctrlpoints[i][j][0], ctrlpoints[i][j][1], ctrlpoints[i][j][2]);
+			for (int v = 0; v < nurbs.dim[NURBS::V]; v++)
+			{
+				for (int u = 0; u < nurbs.dim[NURBS::U]; u++)
+				{
+					size_t coord = nurbs.dim[NURBS::U] * v + u;
+					glm::vec3 cp = nurbs.controlPoints[coord];
+
+					if (action == Action::INSERT && (
+					   (dim == NURBS::U && (u == place[dim] || u == place[dim] - 1)) ||
+					   (dim == NURBS::V && (v == place[dim] || v == place[dim] - 1))
+					   ))
+					{
+						glColor3f(0.0, 1.0, 0.0);
+					}
+					else
+						glColor3f(1.0, 1.0, 0.0);
+
+					glVertex3f(cp.x, cp.y, cp.z);
 				}
 			}
 			glEnd();
