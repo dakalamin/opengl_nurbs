@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 const float NURBS::DEFAULT_STEP = 1.0f;
-const char* NURBS::dim_char[2] = { "U", "V" };
+const char* NURBS::dim_char[2]  = { "U", "V" };
 
 
 NURBS::NURBS(size_t dimU, size_t dimV)
@@ -13,37 +13,48 @@ NURBS::NURBS(size_t dimU, size_t dimV)
 	setDim(V, dimV); setDegree(V);
 	
 	controlPoints = std::vector<glm::vec3>(dim[U] * dim[V]);
-	for (int v = 0; v < dim[V]; v++)
+	for (size_t i = 0; i < controlPoints.size(); i++)
+		controlPoints[i] = glm::vec3
+		(
+			(1.f - dim[U]) / 2.f + index2uv(i, U),
+			(1.f - dim[V]) / 2.f + index2uv(i, V),
+			0.f
+		);
+}
+
+glm::vec3 NURBS::calculateCenter()
+{
+	glm::vec3 min, max;
+	min = max = controlPoints[0];
+
+	for (auto& cp : controlPoints)
 	{
-		for (int u = 0; u < dim[U]; u++)
+		for (int i = 0; i < 3; i++)
 		{
-			controlPoints[dim[U]*v + u] =
-			{
-				(1.f-dim[U]) / 2.f + u,
-				(1.f-dim[V]) / 2.f + v,
-				0.f
-			};
+			if (cp[i] < min[i]) min[i] = cp[i];
+			if (cp[i] > max[i]) max[i] = cp[i];
 		}
 	}
+
+	return (max + min) / 2.f;
 }
 
 
 void NURBS::setKnots(Dim d)
 {
-	size_t knotCount = dim[d] + getOrder(d);
-	knots[d].resize(knotCount);
+	size_t knotCount = dim[d] + degree[d];
+	knots[d].resize(knotCount+1);
 
-	float uniform_delta = 1.f / (knotCount - (clampKnots[d][START] + clampKnots[d][END]) * degree[d]);
+	float uniform_delta = 1.f / (knotCount - (clampKnots[d][START]+clampKnots[d][END]) * degree[d]);
 	float stash = 0.f;
 
-	for (int i = 0; i < knotCount; i++)
+	for (int i = 0; i < knots[d].size(); i++)
 	{
-		bool clamp[2] = { clampKnots[d][START], clampKnots[d][END] };
-		clamp[START] *= i < degree[d];
-		clamp[END]   *= i >= knotCount - degree[d];
+		bool clamp = (clampKnots[d][START] && i <  degree[d]) ||
+		             (clampKnots[d][END]   && i >= knotCount - degree[d]);
 
-		stash += (clamp[START] || clamp[END]) ? 0.f : uniform_delta;
 		knots[d][i] = stash;
+		stash += (clamp) ? 0.f : uniform_delta;
 	}
 }
 
@@ -64,6 +75,26 @@ void NURBS::setDim(Dim d, size_t value)
 	setDegree(d, degree[d]);
 }
 
+void NURBS::removeDim(Dim d, size_t layer)
+{
+	if (layer < 0 || layer > dim[d])
+		throw std::invalid_argument
+		("NURBS::removeDim: place is out of range.");
+
+	setDim(d, dim[d] - 1);
+	switch (d)
+	{
+	case U:
+		for (int i = 0; i < dim[V]; i++)
+			controlPoints.erase(controlPoints.begin() + uv2index(layer, i));
+		break;
+	case V:
+		cp_t::iterator start = controlPoints.begin() + uv2index(0, layer);
+		controlPoints.erase(start, start+dim[U]);
+		break;
+	}
+}
+
 void NURBS::insertDim(Dim d, size_t layer, std::vector<glm::vec3> newCP)
 {
 	if (newCP.size() != dim[reverseDim(d)])
@@ -80,10 +111,11 @@ void NURBS::insertDim(Dim d, size_t layer, std::vector<glm::vec3> newCP)
 	{
 	case U:
 		for (int i = 0; i < dim[V]; i++)
-			controlPoints.insert(controlPoints.begin() + dim[U]*i + layer, newCP[i]);
+			controlPoints.emplace(controlPoints.begin() + uv2index(layer, i), newCP[i]);
 		break;
 	case V:
-		controlPoints.insert(controlPoints.begin() + dim[U]*layer, newCP.begin(), newCP.end());
+		controlPoints.insert(controlPoints.begin() + uv2index(0, layer),
+			newCP.begin(), newCP.end());
 		break;
 	}
 }
@@ -91,41 +123,28 @@ void NURBS::insertDim(Dim d, size_t layer, std::vector<glm::vec3> newCP)
 std::vector<glm::vec3> NURBS::interpolateCP(Dim d, size_t layer)
 {
 	std::vector<glm::vec3> cp(dim[reverseDim(d)], glm::vec3(0.f));
-	size_t pos;
-
-	for (int i = 0; i < dim[reverseDim(d)]; i++)
+	for (size_t i = 0; i < cp.size(); i++)
 	{
 		float step = 0.f;
-
 		switch (d)
 		{
 		case U:
-			pos = dim[U] * i + layer;
-
-			if (layer > 0)
-				cp[i] += controlPoints[pos - 1];
-			else step -= DEFAULT_STEP;
-			if (layer < dim[U])
-				cp[i] += controlPoints[pos];
-			else step += DEFAULT_STEP;
+			if (layer > 0)      cp[i] += controlPoints[uv2index(layer-1, i)];
+			else                step  -= DEFAULT_STEP;
+			if (layer < dim[U]) cp[i] += controlPoints[uv2index(layer, i)];
+			else                step  += DEFAULT_STEP;
 
 			cp[i].x += step; break;
 		case V:
-			pos = dim[U] * layer + i;
-
-			if (layer > 0)
-				cp[i] += controlPoints[pos - dim[U]];
-			else step -= DEFAULT_STEP;
-			if (layer < dim[V])
-				cp[i] += controlPoints[pos];
-			else step += DEFAULT_STEP;
+			if (layer > 0)      cp[i] += controlPoints[uv2index(i, layer-1)];
+			else                step  -= DEFAULT_STEP;
+			if (layer < dim[V]) cp[i] += controlPoints[uv2index(i, layer)];
+			else                step  += DEFAULT_STEP;
 
 			cp[i].y += step; break;
 		}
-
 		if (!step) cp[i] /= 2.f;
 	}
-
 	return cp;
 }
 
@@ -136,7 +155,7 @@ void NURBS::output()
 	{
 		for (int u = 0; u < dim[U]; u++)
 		{
-			glm::vec3 cp = controlPoints[dim[U]*v + u];
+			glm::vec3 cp = controlPoints[uv2index(u, v)];
 			std::cout << cp.x << ' ' << cp.y << ' ' << cp.z << '\t';
 		}
 		std::cout << '\n';

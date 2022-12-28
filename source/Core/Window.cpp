@@ -15,6 +15,8 @@ Window::Window(std::string title, int width, int height)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
 	window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
 	if (!window)
 	{

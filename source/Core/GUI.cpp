@@ -2,12 +2,6 @@
 #include "Core/Window.h"
 
 
-GUI::GUI() : nurbs(5, 3)
-{
-	setCP(NURBS::U);
-	setCP(NURBS::V);
-}
-
 void GUI::init(Window* window)
 {
 	setRenderer();
@@ -17,8 +11,7 @@ void GUI::init(Window* window)
 	ImGui::CreateContext();
 
 	io = ImGui::GetIO(); (void)io;
-	setConfigFlags();
-	loadFonts();
+	setConfigFlags(); loadFonts();
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
@@ -26,6 +19,9 @@ void GUI::init(Window* window)
 	// Setup Platform/Renderer backends
 	ImGui_ImplGlfw_InitForOpenGL(window->window, true);
 	ImGui_ImplOpenGL3_Init(window->GLSL_VERSION.c_str());
+
+	ImGuiStyle& style = ImGui::GetStyle();
+	style.WindowBorderSize = style.ScrollbarRounding = style.TabRounding = 0.f;
 }
 
 GUI::~GUI()
@@ -37,6 +33,13 @@ GUI::~GUI()
 }
 
 
+void GUI::setCP()
+{
+	setCP(NURBS::U);
+	setCP(NURBS::V);
+}
+
+
 void GUI::mainloop(int width, int height, float time)
 {
 	// Start the Dear ImGui frame
@@ -44,10 +47,9 @@ void GUI::mainloop(int width, int height, float time)
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::ShowDemoWindow();
-
 	NURBSSurfaceManager();
 	ImGui::Render();
+
 	ImGui::EndFrame();
 
 	drawNURBS(width, height, time);
@@ -58,14 +60,58 @@ void GUI::mainloop(int width, int height, float time)
 
 void GUI::NURBSSurfaceManager()
 {
-	ImGui::Begin("NURBS Surface Manager");
-	action = Action::NONE;
+	ImGui::SetNextWindowSize( {256, 680} );
+	ImGui::SetNextWindowPos( {1024, 20} );
+	ImGui::Begin("NURBS Surface Manager", nullptr,
+		ImGuiWindowFlags_HorizontalScrollbar |
+		ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoMove
+	);
 
-	if (ImGui::CollapsingHeader("Control Points", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("Parameters", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::PushItemWidth(60);
-		if (ImGui::SliderInt("Dim", (int*)&dim, 0, 1, NURBS::dim_char[dim], ImGuiSliderFlags_NoInput))
-			setCP(dim);
+		ImGui::Text("Degrees:"); ImGui::Spacing();
+		drawDegreeSlider(NURBS::U);
+		drawDegreeSlider(NURBS::V);
+		ImGui::Separator(); ImGui::Spacing();
+
+		ImGui::Text("Knots:"); ImGui::Spacing();
+		drawKnotsClamp(NURBS::U);
+		drawKnotsClamp(NURBS::V);
+		ImGui::Spacing();
+
+		if (ImGui::TreeNode("Show values (not editable)"))
+		{
+			drawKnotsList(NURBS::U);
+			drawKnotsList(NURBS::V);
+			ImGui::TreePop();
+		}
+		ImGui::Spacing();
+	}
+
+	ImGui::Spacing(); ImGui::Separator();
+	ImGui::Text("CONTROL POINTS"); ImGui::Spacing();
+	if (ImGui::CollapsingHeader("Coordinates"))
+	{
+		ImGui::Spacing();
+		drawCoordsTop();
+
+		for (size_t i = 0; i < nurbs.controlPoints.size(); i++)
+		{
+			glm::vec3 &cp = nurbs.controlPoints[i];
+
+			ImGui::DragFloat3(concat(i, dim).c_str(), & cp[0], dragV);
+			if (ImGui::IsItemHovered() || ImGui::IsItemFocused())
+				cpFocused = &cp;
+		}
+		ImGui::Spacing();
+	}
+	action = Action::NONE;
+	if (ImGui::CollapsingHeader("Actions"))
+	{
+		ImGui::Spacing(); ImGui::PushItemWidth(60);
+		ImGui::SliderInt("Dim", (int*)&dim, 0, 1, NURBS::dim_char[dim], ImGuiSliderFlags_NoInput);
 		ImGui::PopItemWidth();
 		ImGui::SameLine(0, 20);
 
@@ -73,38 +119,93 @@ void GUI::NURBSSurfaceManager()
 		{
 			if (ImGui::BeginTabItem("Insertion"))
 			{
-				action = Action::INSERT;
+				ImGui::Spacing();
 
-				ImGui::Text("Layer to insert a new line of CP to:");
-				ImGui::SliderInt("# of layer", (int*)&layer[dim], 0, nurbs.dim[dim]);
+				bool dimIsMax = nurbs.dim[dim] >= NURBS::MAX_DIM;
+				if (dimIsMax)
+					ImGui::Text("Max %s dimension reached!", NURBS::dim_char[dim]);
+				else
+					action = Action::INSERT;
 
-				ImGui::Separator();
+				ImGui::BeginDisabled(dimIsMax);
+				ImGui::Text("Layer to insert a new line to CPs:");
+				ImGui::SliderInt("# of layer", (int*)&layer[0][dim], 0, nurbs.dim[dim]);
+
+				ImGui::Separator(); ImGui::Spacing();
 				ImGui::Text("CP set modes:");
+
 				ImGui::RadioButton("Automatic", &automatic[dim], 1); ImGui::SameLine();
-				ImGui::RadioButton("Manual", &automatic[dim], 0);
+				ImGui::RadioButton("Manual",    &automatic[dim], 0);
 
 				if (automatic[dim])
 				{
-					controlPoints[dim] = nurbs.interpolateCP(dim, layer[dim]);
-					ImGui::Text("*Coords will be approximated");
+					ImGui::Text("*Coords are approximated");
+					controlPoints[dim] = nurbs.interpolateCP(dim, layer[0][dim]);
 				}
+				ImGui::EndDisabled(); /* dimIsMax */
 
-				ImGui::BeginDisabled(automatic[dim]);
-				for (size_t i = 0; i < nurbs.dim[NURBS::reverseDim(dim)]; i++)
-					ImGui::DragFloat3((NURBS::dim_char[dim] + std::to_string(i)).c_str(), &controlPoints[dim][i][0], 0.1f);
-				ImGui::EndDisabled();
+				ImGui::Spacing();
 
+				ImGui::BeginDisabled(automatic[dim] || dimIsMax);
+				drawCoordsTop();
+				for (size_t i = 0; i < controlPoints[dim].size(); i++)
+					ImGui::DragFloat3(concat(i, dim).c_str(), &controlPoints[dim][i][0], dragV);
+				ImGui::EndDisabled(); /* automatic[dim] || dimIsMax */
+
+				ImGui::BeginDisabled(dimIsMax);
+				ImGui::Spacing();
+				if (ImGui::Button("Insert", ImVec2(165, 0)))
+				{
+					nurbs.insertDim(dim, layer[0][dim], controlPoints[dim]);
+					if (layer[0][dim]) layer[0][dim]++;
+				}
+				ImGui::EndDisabled(); /* dimIsMax */
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Deletion"))
 			{
-				action = Action::DELETE;
+				ImGui::Spacing();
 
-				ImGui::Text("This is for Dim Deletion");
+				bool dimIsMin = nurbs.dim[dim] <= NURBS::MIN_DIM;
+				if (dimIsMin)
+					ImGui::Text("Min %s dimension reached!", NURBS::dim_char[dim]);
+				else
+					action = Action::DELETE;
+
+				ImGui::BeginDisabled(dimIsMin);
+				ImGui::Text("Layer to delete a line from CPs:");
+				ImGui::SliderInt("# of layer", (int*)&layer[1][dim], 0, nurbs.dim[dim]-1);
+
+				ImGui::Spacing();
+				if (ImGui::Button("Delete", ImVec2(165, 0)))
+				{
+					nurbs.removeDim(dim, layer[1][dim]);
+					if (layer[1][dim]) layer[1][dim]--;
+				}
+				ImGui::EndDisabled(); /* dimIsMin */
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
 		}
+	}
+
+
+	ImGui::Spacing(); ImGui::Separator();
+	ImGui::Text("MISCELLANEOUS"); ImGui::Spacing();
+	if (ImGui::CollapsingHeader("Appearance"))
+	{
+		ImGui::Text("Background Color");
+		ImGui::ColorEdit3("##BG Color", &Color::BACKGROUND[0]);
+
+		ImGui::Spacing(); ImGui::Text("Point Colors");
+		ImGui::ColorEdit3("Common", &Color::POINT_COMMON[0]);
+		ImGui::ColorEdit3("Accent", &Color::POINT_ACCENT[0]);
+		ImGui::ColorEdit3("Nearby", &Color::POINT_NEARBY[0]);
+		ImGui::ColorEdit3("Insert", &Color::POINT_INSERT[0]);
+		ImGui::ColorEdit3("Delete", &Color::POINT_DELETE[0]);
+
+		ImGui::Spacing();
+		ImGui::Checkbox("Show Points?", &showPoints);
 	}
 
 	ImGui::End();
@@ -114,8 +215,14 @@ void GUI::drawNURBS(int width, int height, float time)
 {
 	float ratio = 1.f * width/height;
 
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_AUTO_NORMAL);
+	glEnable(GL_NORMALIZE);
+
 	glViewport(0, 0, width, height);
-	glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+	Color::set4(glClearColor, Color::BACKGROUND);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -123,13 +230,13 @@ void GUI::drawNURBS(int width, int height, float time)
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	glTranslatef(0.0, 0.0, -10.0);
+	glTranslatef(-1.4, 0.0, -10.0);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glPushMatrix();
 	glRotatef(-60.f, 1.f, 0.f, 0.f);
-	glRotatef(time*15.f, 0.f, 0.f, 1.f);
+	glRotatef(time*6.f, 0.f, 0.f, 1.f);
 
 	GLUnurbs* r = (GLUnurbs*)renderer;
 
@@ -150,43 +257,110 @@ void GUI::drawNURBS(int width, int height, float time)
 	glFlush();
 }
 
+void GUI::drawPoint(glm::vec3 cp) { glVertex3f(cp.x, cp.y, cp.z); }
+
 void GUI::drawPoints()
 {
 	glPointSize(5.f);
+
 	glDisable(GL_LIGHTING);
-
 	glBegin(GL_POINTS);
-	for (size_t v = 0; v < nurbs.dim[NURBS::V]; v++)
-	{
-		for (size_t u = 0; u < nurbs.dim[NURBS::U]; u++)
-		{
-			size_t coord = nurbs.dim[NURBS::U] * v + u;
-			glm::vec3 cp = nurbs.controlPoints[coord];
 
-			if (action == Action::INSERT && (
-				(dim == NURBS::U && (u == layer[dim] || u == layer[dim] - 1)) ||
-				(dim == NURBS::V && (v == layer[dim] || v == layer[dim] - 1))
-				))
-			{
-				glColor3f(1.f, 1.f, 0.f);
-			}
-			else
-				glColor3f(0.8f, 0.8f, 0.8f);
-
-			glVertex3f(cp.x, cp.y, cp.z);
-		}
-	}
 	if (action == Action::INSERT)
 	{
-		glColor3f(0.f, 1.f, 0.f);
+		Color::set4(glColor4f, Color::POINT_INSERT);
 		for (size_t i = 0; i < nurbs.dim[NURBS::reverseDim(dim)]; i++)
+			drawPoint(controlPoints[dim][i]);
+	}
+
+	for (size_t i = 0; i < nurbs.controlPoints.size(); i++)
+	{
+		glm::vec4 color = Color::POINT_COMMON;
+
+		size_t c = nurbs.index2uv(i, dim);
+		switch (action)
 		{
-			glm::vec3 cp = controlPoints[dim][i];
-			glVertex3f(cp.x, cp.y, cp.z);
+		case Action::INSERT:
+			if (c == layer[0][dim] || c == layer[0][dim] - 1)
+				color = Color::POINT_NEARBY;
+			break;
+		case Action::DELETE:
+			if (c == layer[1][dim])
+				color = Color::POINT_DELETE;
+			break;
 		}
+		Color::set4(glColor4f, color);
+		drawPoint(nurbs.controlPoints[i]);
 	}
 	glEnd();
-	glEnable(GL_LIGHTING);
+
+	glPointSize(8.f);
+	glDisable(GL_DEPTH_TEST);
+	glBegin(GL_POINTS);
+	if (cpFocused != nullptr)
+	{
+		Color::set4(glColor4f, Color::POINT_ACCENT);
+		drawPoint(*cpFocused);
+
+		cpFocused = nullptr;
+	}
+	glEnd();
+}
+
+void GUI::drawDegreeSlider(NURBS::Dim d)
+{
+	if (ImGui::SliderInt(NURBS::dim_char[d], (int*)&nurbs.degree[d], nurbs.MIN_DEGREE, nurbs.getMaxDegree(d)))
+		nurbs.setDegree(d, nurbs.degree[d]);
+}
+
+void GUI::drawKnotsClamp(NURBS::Dim d)
+{
+	ImGui::AlignTextToFramePadding();
+	ImGui::Text("Clamp %s at:",  NURBS::dim_char[d]); ImGui::SameLine(75);
+
+	bool toggled = false;
+	if (ImGui::Checkbox(concat("##Clamp start", d).c_str(), &nurbs.clampKnots[d][NURBS::START]))
+		toggled = true;
+	ImGui::SameLine(); ImGui::Text("Start"); ImGui::SameLine();
+
+	if (ImGui::Checkbox(concat("##Clamp end", d).c_str(), &nurbs.clampKnots[d][NURBS::END]))
+		toggled = true;
+	ImGui::SameLine(); ImGui::Text("End");
+
+	if (toggled) nurbs.setKnots(d);
+}
+
+void GUI::drawKnotsList(NURBS::Dim d)
+{
+	float indent = -14.f;
+
+	ImGui::Indent(indent);
+	ImGui::AlignTextToFramePadding();
+	ImGui::Text(NURBS::dim_char[d]); ImGui::SameLine(30);
+
+	size_t knots = nurbs.knots[d].size();
+	if (ImGui::BeginTable(concat("##Knots", d).c_str(), knots,
+		ImGuiTableFlags_ScrollX, { 0.0f, FONT_SIZE * 2.5f } ))
+	{
+		for (size_t i = 0; i < knots; i++)
+		{
+			ImGui::TableNextColumn();
+			ImGui::Text("%.2f", nurbs.knots[d][i]);
+		}
+		ImGui::EndTable();
+	}
+	ImGui::Unindent(indent);
+}
+
+void GUI::drawCoordsTop()
+{
+	float spacing = 50.f;
+
+	ImGui::Indent(20);
+	ImGui::Text("X"); ImGui::SameLine(0, spacing);
+	ImGui::Text("Y"); ImGui::SameLine(0, spacing);
+	ImGui::Text("Z");
+	ImGui::Unindent();
 }
 
 
@@ -205,12 +379,6 @@ void GUI::setRenderer()
 	glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
 	glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
 	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
-
-	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_AUTO_NORMAL);
-	glEnable(GL_NORMALIZE);
 }
 
 
@@ -225,6 +393,8 @@ void GUI::setConfigFlags()
 
 void GUI::loadFonts()
 {
-	io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", 15.0f);
-	io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/sourcesans_pro/SourceSansPro-Regular.ttf", 15.0f);
+	io.Fonts->
+		AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", FONT_SIZE);
+	io.FontDefault = io.Fonts->
+		AddFontFromFileTTF("assets/fonts/sourcesans_pro/SourceSansPro-Regular.ttf", FONT_SIZE);
 }
